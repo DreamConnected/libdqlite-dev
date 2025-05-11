@@ -62,6 +62,37 @@
 /* XXX */
 #define NUM_TRACKED_DOMAINS 5
 
+#ifdef __ANDROID__
+#include <stdio.h>
+__thread struct qsort_r_context tls_ctx;
+
+struct qsort_r_context {
+        int (*compare)(const void *, const void *, void *);
+        void *arg;
+};
+
+static int compare_wrapper(const void *a, const void *b) {
+        return tls_ctx.compare(a, b, tls_ctx.arg);
+}
+
+static void qsort_r(void *base, size_t nmemb, size_t size,
+                int (*compare)(const void *, const void *, void *),
+                void *arg) {
+        if (compare == NULL) {
+                fprintf(stderr, "Error: compare function cannot be NULL.\n");
+                return;
+        }
+        tls_ctx.compare = compare;
+        tls_ctx.arg = arg;
+        qsort(base, nmemb, size, compare_wrapper);
+}
+
+int compare(const void *a, const void *b, void *arg) {
+	(void)arg;
+        return (*(int *)a - *(int *)b);
+}
+#endif
+
 struct change_record
 {
 	raft_id id;
