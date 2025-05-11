@@ -360,7 +360,7 @@ static bool uvIsAddressDuplication(struct addrinfo *addr_info)
 		return false;
 	}
 	if (addr_info->ai_addrlen != next->ai_addrlen ||
-	    bcmp(addr_info->ai_addr, next->ai_addr, addr_info->ai_addrlen)) {
+	    memcmp(addr_info->ai_addr, next->ai_addr, addr_info->ai_addrlen)) {
 		return false;
 	}
 	return true;
