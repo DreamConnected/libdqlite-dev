@@ -37,18 +37,8 @@ static void state_cb(struct raft *r,
 		     unsigned short old_state,
 		     unsigned short new_state)
 {
-	struct dqlite_node *d = r->data;
-	queue *head;
-	struct conn *conn;
-
 	if (old_state == RAFT_LEADER && new_state != RAFT_LEADER) {
 		tracef("node %llu@%s: leadership lost", r->id, r->address);
-		QUEUE_FOREACH(head, &d->conns)
-		{
-			conn = QUEUE_DATA(head, struct conn, queue);
-			gateway__leader_close(&conn->gateway,
-					      RAFT_LEADERSHIPLOST);
-		}
 	}
 }
 
@@ -198,7 +188,6 @@ void dqlite__close(struct dqlite_node *d)
 	// TODO assert rv of uv_loop_close after fixing cleanup logic related to
 	// the TODO above referencing the cleanup logic without running the
 	// node. See https://github.com/canonical/dqlite/issues/504.
-
 	uv_loop_close(&d->loop);
 	raftProxyClose(&d->raft_transport);
 	registry__close(&d->registry);
@@ -436,6 +425,7 @@ int dqlite_node_set_block_size(dqlite_node *n, size_t size)
 	raft_uv_set_block_size(&n->raft_io, size);
 	return 0;
 }
+
 int dqlite_node_enable_disk_mode(dqlite_node *n)
 {
 	int rv;
@@ -444,7 +434,7 @@ int dqlite_node_enable_disk_mode(dqlite_node *n)
 		return DQLITE_MISUSE;
 	}
 
-	rv = dqlite_vfs_enable_disk(&n->vfs);
+	rv = VfsEnableDisk(&n->vfs);
 	if (rv != 0) {
 		return rv;
 	}
@@ -757,6 +747,12 @@ int dqlite_node_set_target_standbys(dqlite_node *n, int standbys)
 int dqlite_node_enable_role_management(dqlite_node *n)
 {
 	n->role_management = true;
+	return 0;
+}
+
+int dqlite_node_set_busy_timeout(dqlite_node *n, unsigned msecs)
+{
+	n->config.busy_timeout = msecs;
 	return 0;
 }
 
